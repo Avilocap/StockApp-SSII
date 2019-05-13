@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">PAI5Inventory</string>
+    <string name="mesas">Mesas</string>
+    <string name="sillas">Sillas</string>
+    <string name="sillones">Sillones</string>
+    <string name="sofas">Sofas</string>
+    <string name="numero_de_cliente">Numero de cliente</string>
+    <string name="enviar">Enviar</string>
 </resources>

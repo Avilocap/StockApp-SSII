@@ -5,6 +5,11 @@ import java.io.ObjectOutputStream;
 import java.lang.ClassNotFoundException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.security.Signature;
+import java.security.SignatureException;
 
 /**
  *
@@ -33,7 +38,7 @@ public class serverSide {
             //create ObjectOutputStream object
             ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
             //write object to Socket
-            oos.writeObject("Hi Client "+message);
+            oos.writeObject(""+ message);
             //close resources
             ois.close();
             oos.close();
@@ -46,4 +51,33 @@ public class serverSide {
         server.close();
     }
 
+
+    private Boolean verificaFirmaDigital(PublicKey publicKey, String cadenaCaracteres, byte[] b){
+
+        Signature firma= null;
+        try {
+            firma = Signature.getInstance("SHA1withDSA");
+            firma.initVerify(publicKey);
+            firma.update(cadenaCaracteres.getBytes());
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        } catch (SignatureException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            if(firma.verify(b)){
+                    return true;
+                }else {
+                    return false;
+                }
+        } catch (SignatureException e) {
+            e.printStackTrace();
+            return false;
+        }
+
+
+    }
 }

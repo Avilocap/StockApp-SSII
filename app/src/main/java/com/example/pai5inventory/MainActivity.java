@@ -3,11 +3,29 @@ package com.example.pai5inventory;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.res.Resources;
+import android.os.StrictMode;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.net.UnknownHostException;
+import java.security.InvalidKeyException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.Signature;
+import java.security.SignatureException;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -34,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void checkData() {
 
-        // Comprobamos los datos introducidos en el formulario
+        //Se transforman los datos del formulario
         EditText mesasData = findViewById(R.id.mesasInput);
         EditText sillasData = findViewById(R.id.sillasInput);
         EditText sofasData = findViewById(R.id.sofasInput);
@@ -47,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
         String sillonesNumberTexto = sillonesData.getText().toString().trim();
         String clientNumberTexto = numero_cliente_Data.getText().toString().trim();
 
-
+        // Comprobamos los datos introducidos en el formulario
         if (mesasNumberTexto.isEmpty() || sillasNumberTexto.isEmpty() || sofasNumberTexto.isEmpty() || sillonesNumberTexto.isEmpty() || clientNumberTexto.isEmpty()){
             Toast.makeText(MainActivity.this, "Por favor, introduce 0 si no quieres ninguno", Toast.LENGTH_SHORT).show();
 
@@ -66,6 +84,7 @@ public class MainActivity extends AppCompatActivity {
             if(mesasNumberInt<0 || mesasNumberInt > 300 || sillasNumberInt<0 || sillasNumberInt > 300 || sofasNumberInt<0 || sofasNumberInt > 300 || sillonesNumberInt<0 || sillonesNumberInt > 300){
                 Toast.makeText(MainActivity.this, "Solo puedes pedir de 0 a 300 elementos de cada tipo", Toast.LENGTH_SHORT).show();
             }else {
+                //Si está correcto, se procede a enviar el mensaje
                 this.sendData(mesasNumberTexto, sillasNumberTexto, sofasNumberTexto, sillasNumberTexto, clientNumberTexto);
             }
 
@@ -77,6 +96,10 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void sendData(final String mesas_number, final String sillas_number, final String sillones_number, final String sofas_number, final String client_num) throws Resources.NotFoundException {
+
+        //Hay que poner esta instrucción para permitir a la aplicación ciertas funciones "prohibidas en producción"
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
 
             new AlertDialog.Builder(this)
                     .setTitle("Enviar")
@@ -95,9 +118,92 @@ public class MainActivity extends AppCompatActivity {
                                     String numero_sofas = sofas_number;
                                     String numero_cliente = client_num;
 
+
+
                                     // 2. Firmar los datos
 
+                                    //Generamos el par de claves y la firma
+                                    KeyPair par_de_claves = generateKeyPar();
+                                    Signature firma = generateSignature();
+
+                                    //Inicializamos la firma
+                                    SecureRandom secureRandom = new SecureRandom();
+                                    try {
+                                        firma.initSign(par_de_claves.getPrivate(), secureRandom);
+                                    } catch (InvalidKeyException e) {
+                                        e.printStackTrace();
+                                    }
+
+                                    try {
+                                        byte[] data = "abcdefghijklmnopqrstuvxyz".getBytes("UTF-8");
+                                        firma.update(data);
+                                    } catch (UnsupportedEncodingException e) {
+                                        e.printStackTrace();
+                                    } catch (SignatureException e) {
+                                        e.printStackTrace();
+                                    }
+
+                                    try {
+                                        byte[] b =firma.sign();
+                                    } catch (SignatureException e) {
+                                        e.printStackTrace();
+                                    }
+
+
                                     // 3. Enviar los datos
+
+                                    try {
+                                        List<String> listaParametros = new ArrayList<>();
+                                        listaParametros.add(numero_mesas);
+                                        listaParametros.add(numero_sillas);
+                                        listaParametros.add(numero_sillones);
+                                        listaParametros.add(numero_sofas);
+                                        listaParametros.add(numero_cliente);
+
+                                        for (String parametro: listaParametros){
+//                                        InetAddress host = InetAddress.getLocalHost();
+                                            Socket socket = null;
+                                            ObjectOutputStream oos = null;
+                                            ObjectInputStream ois = null;
+                                            //Hay que utilizar la dirección ip 10.0.2.2 para hacer referencia al localhot de nuestra máquina. No se puede usar 127.0.0.1 porque la utiliza android para el emulador
+                                            socket = new Socket("10.0.2.2", 9876);
+                                            oos = new ObjectOutputStream(socket.getOutputStream());
+                                            System.out.println("Sending request to Socket Server");
+
+                                            //Enviamos los parámetros
+                                            oos.writeObject(""+parametro);
+                                            ois = new ObjectInputStream(socket.getInputStream());
+                                            String message = (String) ois.readObject();
+                                            System.out.println("Parameter recived: " + message);
+
+                                            if(listaParametros.indexOf(parametro) == (listaParametros.size() -1)) oos.writeObject("exit");
+
+
+                                            ois.close();
+                                            oos.close();
+                                            try {
+                                                Thread.sleep(100);
+                                            } catch (InterruptedException e) {
+                                                e.printStackTrace();
+                                            }
+                                        }
+
+
+
+
+                                    } catch (UnknownHostException e) {
+                                        e.printStackTrace();
+                                    } catch (IOException e){
+                                        e.printStackTrace();
+                                    } catch (ClassNotFoundException e){
+                                        e.printStackTrace();
+                                    }
+
+
+
+
+
+
 
                                     Toast.makeText(MainActivity.this, "Petición enviada correctamente", Toast.LENGTH_SHORT).show();
                                 }
@@ -111,5 +217,30 @@ public class MainActivity extends AppCompatActivity {
                     .
 
                             show();
+    }
+
+    private KeyPair generateKeyPar() {
+
+        try {
+            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
+            keyPairGenerator.initialize(2048);
+            KeyPair keyPair = keyPairGenerator.generateKeyPair();
+            return keyPair;
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return null;
+        }
+
+    }
+
+    private Signature generateSignature(){
+
+        try {
+            Signature signature = Signature.getInstance("SHA1WithDSA");
+            return signature;
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }

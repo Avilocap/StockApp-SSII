@@ -117,7 +117,7 @@ public class MainActivity extends AppCompatActivity {
                                     String numero_sillones = sillones_number;
                                     String numero_sofas = sofas_number;
                                     String numero_cliente = client_num;
-
+//FIRMA RSA: https://niels.nu/blog/2016/java-rsa.html
 
 
                                     // 2. Firmar los datos

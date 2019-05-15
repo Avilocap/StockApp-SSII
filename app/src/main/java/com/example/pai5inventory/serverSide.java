@@ -35,17 +35,37 @@ public class serverSide {
             ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
             //convert ObjectInputStream object to String
             String message = (String) ois.readObject();
-            System.out.println("Message Received: " + message);
             //create ObjectOutputStream object
             ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
-            //write object to Socket
-            oos.writeObject(""+ message);
-            //close resources
-            ois.close();
-            oos.close();
-            socket.close();
+            //Verificamos el número de cliente
+            if(verifyClientNumber(message)){
+                System.out.println("Message Received: " + message);
+                oos.writeObject(""+ message);
+                oos.flush();
+
+                String data = (String) ois.readObject();
+                System.out.println("Data received" + data);
+
+                oos.writeObject("ok");
+                oos.flush();
+
+                ois.close();
+                oos.close();
+                socket.close();
+                break;
+            }else{
+                System.out.println("You are not allowed to send data: " + message);
+                message = "false";
+                //write object to Socket
+                oos.writeObject(""+ message);
+                //close resources
+                ois.close();
+                oos.close();
+                socket.close();
+                break;
+
+            }
             //terminate the server if client sends exit request
-            if(message.equalsIgnoreCase("exit")) break;
         }
         System.out.println("Shutting down Socket server!!");
         //close the ServerSocket object
@@ -79,6 +99,17 @@ public class serverSide {
             return false;
         }
 
+
+    }
+
+
+    private static Boolean verifyClientNumber(String clientNumber){
+        Boolean res = false;
+
+        if (clientNumber.equals("123456")){
+            res = true;
+        }
+        return res;
 
     }
 }

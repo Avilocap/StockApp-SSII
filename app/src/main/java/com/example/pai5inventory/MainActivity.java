@@ -10,6 +10,7 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -25,6 +26,7 @@ import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
 
@@ -117,13 +119,13 @@ public class MainActivity extends AppCompatActivity {
                                     String numero_sillones = sillones_number;
                                     String numero_sofas = sofas_number;
                                     String numero_cliente = client_num;
-//FIRMA RSA: https://niels.nu/blog/2016/java-rsa.html
 
-
+                                    String dataToSign = numero_mesas+";"+numero_sillas+";"+numero_sillones+";"+numero_sofas;
                                     // 2. Firmar los datos
 
                                     //Generamos el par de claves y la firma
                                     KeyPair par_de_claves = generateKeyPar();
+                                    byte[] keybytes = par_de_claves.getPublic().getEncoded();
                                     Signature firma = generateSignature();
 
                                     //Inicializamos la firma
@@ -135,8 +137,10 @@ public class MainActivity extends AppCompatActivity {
                                     }
 
                                     try {
-                                        byte[] data = "abcdefghijklmnopqrstuvxyz".getBytes("UTF-8");
+                                        byte[] data = dataToSign.getBytes("UTF-8");
                                         firma.update(data);
+                                        byte[] realSig = firma.sign();
+
                                     } catch (UnsupportedEncodingException e) {
                                         e.printStackTrace();
                                     } catch (SignatureException e) {
@@ -149,44 +153,64 @@ public class MainActivity extends AppCompatActivity {
                                         e.printStackTrace();
                                     }
 
-
-                                    // 3. Enviar los datos
+                                    // 3. Enviamos el número de cliente para que el servidor verifique
 
                                     try {
-                                        List<String> listaParametros = new ArrayList<>();
-                                        listaParametros.add(numero_mesas);
-                                        listaParametros.add(numero_sillas);
-                                        listaParametros.add(numero_sillones);
-                                        listaParametros.add(numero_sofas);
-                                        listaParametros.add(numero_cliente);
 
-                                        for (String parametro: listaParametros){
-//                                        InetAddress host = InetAddress.getLocalHost();
-                                            Socket socket = null;
-                                            ObjectOutputStream oos = null;
-                                            ObjectInputStream ois = null;
+                                        Socket socket = null;
+                                        ObjectOutputStream oos = null;
+                                        ObjectInputStream ois = null;
                                             //Hay que utilizar la dirección ip 10.0.2.2 para hacer referencia al localhot de nuestra máquina. No se puede usar 127.0.0.1 porque la utiliza android para el emulador
-                                            socket = new Socket("10.0.2.2", 9876);
-                                            oos = new ObjectOutputStream(socket.getOutputStream());
-                                            System.out.println("Sending request to Socket Server");
-
+                                        socket = new Socket("10.0.2.2", 9876);
+                                        oos = new ObjectOutputStream(socket.getOutputStream());
+                                        System.out.println("Sending request to Socket Server");
                                             //Enviamos los parámetros
-                                            oos.writeObject(""+parametro);
-                                            ois = new ObjectInputStream(socket.getInputStream());
-                                            String message = (String) ois.readObject();
-                                            System.out.println("Parameter recived: " + message);
+                                        oos.writeObject(""+numero_cliente);
+                                        ois = new ObjectInputStream(socket.getInputStream());
+                                        String message = (String) ois.readObject();
+                                        System.out.println("Parameter recived: " + message);
+                                        //Si el número de cliente está verificado, se envian los datos, si no, se informa
+                                        if(!message.equals("false")){
 
-                                            if(listaParametros.indexOf(parametro) == (listaParametros.size() -1)) oos.writeObject("exit");
-
-
-                                            ois.close();
-                                            oos.close();
                                             try {
                                                 Thread.sleep(100);
                                             } catch (InterruptedException e) {
                                                 e.printStackTrace();
                                             }
+
+                                            oos.flush();
+                                            oos.writeObject(""+dataToSign);
+
+                                            try {
+                                                Thread.sleep(100);
+                                            } catch (InterruptedException e) {
+                                                e.printStackTrace();
+                                            }
+
+                                            String receptionOk = (String) ois.readObject();
+                                            if(receptionOk.equals("ok")){
+                                                Toast.makeText(MainActivity.this, "Datos enviados correctamente", Toast.LENGTH_SHORT).show();
+                                                ois.close();
+                                                oos.close();
+                                                socket.close();
+                                            }else {
+                                                Toast.makeText(MainActivity.this, "Ha habido un error al enviar los datos", Toast.LENGTH_SHORT).show();
+                                                ois.close();
+                                                oos.close();
+                                                socket.close();
+                                            }
+                                        }else {
+                                            Toast.makeText(MainActivity.this, "La autenticación de cliente ha fallado", Toast.LENGTH_SHORT).show();
+                                            ois.close();
+                                            oos.close();
+                                            socket.close();
+
+
                                         }
+
+
+
+
 
 
 
@@ -205,7 +229,7 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-                                    Toast.makeText(MainActivity.this, "Petición enviada correctamente", Toast.LENGTH_SHORT).show();
+//                                    Toast.makeText(MainActivity.this, "Petición enviada correctamente", Toast.LENGTH_SHORT).show();
                                 }
                             }
 

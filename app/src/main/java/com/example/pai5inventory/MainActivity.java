@@ -139,7 +139,6 @@ public class MainActivity extends AppCompatActivity {
                                     try {
                                         byte[] data = dataToSign.getBytes("UTF-8");
                                         firma.update(data);
-                                        byte[] realSig = firma.sign();
 
                                     } catch (UnsupportedEncodingException e) {
                                         e.printStackTrace();
@@ -147,11 +146,7 @@ public class MainActivity extends AppCompatActivity {
                                         e.printStackTrace();
                                     }
 
-                                    try {
-                                        byte[] b =firma.sign();
-                                    } catch (SignatureException e) {
-                                        e.printStackTrace();
-                                    }
+
 
                                     // 3. Enviamos el número de cliente para que el servidor verifique
 
@@ -179,13 +174,30 @@ public class MainActivity extends AppCompatActivity {
                                             }
 
                                             oos.flush();
-                                            oos.writeObject(""+dataToSign);
+                                            oos.writeObject(par_de_claves.getPublic());
 
                                             try {
                                                 Thread.sleep(100);
                                             } catch (InterruptedException e) {
                                                 e.printStackTrace();
                                             }
+
+                                            oos.flush();
+                                            oos.writeObject(dataToSign);
+
+                                            try {
+                                                Thread.sleep(100);
+                                            } catch (InterruptedException e) {
+                                                e.printStackTrace();
+                                            }
+
+                                            try {
+                                                oos.flush();
+                                                oos.writeObject(firma.sign());
+                                            } catch (SignatureException e) {
+                                                e.printStackTrace();
+                                            }
+
 
                                             String receptionOk = (String) ois.readObject();
                                             if(receptionOk.equals("ok")){

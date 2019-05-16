@@ -43,11 +43,24 @@ public class serverSide {
                 oos.writeObject(""+ message);
                 oos.flush();
 
-                String data = (String) ois.readObject();
-                System.out.println("Data received" + data);
+                PublicKey pukey = (PublicKey) ois.readObject();
+                System.out.println("Public Key received");
 
-                oos.writeObject("ok");
-                oos.flush();
+
+                String data_to_sign = (String) ois.readObject();
+                System.out.println("Data received");
+
+                byte[] b = (byte[]) ois.readObject();
+                System.out.println("bytes received");
+
+
+                if(verificaFirmaDigital(pukey,data_to_sign,b)){
+                    oos.writeObject("ok");
+                }else{
+                    oos.writeObject("nook");
+                    oos.flush();
+
+                }
 
                 ois.close();
                 oos.close();
@@ -73,7 +86,7 @@ public class serverSide {
     }
 
 
-    private Boolean verificaFirmaDigital(PublicKey publicKey, String cadenaCaracteres, byte[] b){
+    private static Boolean verificaFirmaDigital(PublicKey publicKey, String cadenaCaracteres, byte[] b){
 
         Signature firma= null;
         try {

@@ -122,6 +122,7 @@ public class MainActivity extends AppCompatActivity {
 
                                     String dataToSign = numero_mesas+";"+numero_sillas+";"+numero_sillones+";"+numero_sofas;
                                     // 2. Firmar los datos
+                                    byte[] signb = new byte[12];
 
                                     //Generamos el par de claves y la firma
                                     KeyPair par_de_claves = generateKeyPar();
@@ -137,8 +138,9 @@ public class MainActivity extends AppCompatActivity {
                                     }
 
                                     try {
-                                        byte[] data = dataToSign.getBytes("UTF-8");
-                                        firma.update(data);
+                                        byte[] datass = dataToSign.getBytes("UTF-8");
+                                        firma.update(datass);
+                                        signb = firma.sign();
 
                                     } catch (UnsupportedEncodingException e) {
                                         e.printStackTrace();
@@ -174,15 +176,6 @@ public class MainActivity extends AppCompatActivity {
                                             }
 
                                             oos.flush();
-                                            oos.writeObject(par_de_claves.getPublic());
-
-                                            try {
-                                                Thread.sleep(100);
-                                            } catch (InterruptedException e) {
-                                                e.printStackTrace();
-                                            }
-
-                                            oos.flush();
                                             oos.writeObject(dataToSign);
 
                                             try {
@@ -191,12 +184,9 @@ public class MainActivity extends AppCompatActivity {
                                                 e.printStackTrace();
                                             }
 
-                                            try {
-                                                oos.flush();
-                                                oos.writeObject(firma.sign());
-                                            } catch (SignatureException e) {
-                                                e.printStackTrace();
-                                            }
+                                            oos.flush();
+                                            oos.writeObject(signb);
+
 
 
                                             String receptionOk = (String) ois.readObject();
@@ -258,8 +248,8 @@ public class MainActivity extends AppCompatActivity {
     private KeyPair generateKeyPar() {
 
         try {
-            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-            keyPairGenerator.initialize(2048);
+            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("DSA");
+            keyPairGenerator.initialize(1024);
             KeyPair keyPair = keyPairGenerator.generateKeyPair();
             return keyPair;
         } catch (NoSuchAlgorithmException e) {

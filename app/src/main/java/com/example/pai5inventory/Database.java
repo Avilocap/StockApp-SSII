@@ -3,6 +3,7 @@ package com.example.pai5inventory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.security.spec.X509EncodedKeySpec;
 import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.DriverManager;
@@ -32,6 +33,10 @@ public class Database {
 
     }
 
+    /**
+     * Open connection and keep it open
+     * @return Connection to play with it
+     */
     public Connection openConnectionGet(){
         Connection conn = null;
         try {
@@ -46,6 +51,9 @@ public class Database {
         return conn;
     }
 
+    /**
+     * Open connection and keep it open
+     */
     public void openConnection(){
         Connection conn = null;
         try {
@@ -59,6 +67,9 @@ public class Database {
         }
     }
 
+    /**
+     * Close active connection, if any.
+     */
     public void closeConnection(){
         try {
             DriverManager.getConnection
@@ -75,62 +86,11 @@ public class Database {
     }
 
 
-    public void testDerby() {
-        Connection conn = null;
-        PreparedStatement pstmt;
-        Statement stmt;
-        ResultSet rs = null;
-        String createSQL = "create table person ("
-                + "id integer not null generated always as"
-                + " identity (start with 1, increment by 1),   "
-                + "name varchar(30) not null, email varchar(30), phone varchar(10),"
-                + "constraint primary_key primary key (id))";
-
-        try {
-            Driver derbyEmbeddedDriver = new EmbeddedDriver();
-            DriverManager.registerDriver(derbyEmbeddedDriver);
-            conn = DriverManager.getConnection
-                    ("jdbc:derby:pai5db;create=true");
-            conn.setAutoCommit(false);
-            stmt = conn.createStatement();
-            stmt.execute(createSQL);
-
-            pstmt = conn.prepareStatement("insert into person (name,email,phone) values(?,?,?)");
-            pstmt.setString(1, "Hagar the Horrible");
-            pstmt.setString(2, "hagar@somewhere.com");
-            pstmt.setString(3, "1234567890");
-            pstmt.executeUpdate();
-
-            rs = stmt.executeQuery("select * from person");
-            while (rs.next()) {
-                System.out.printf("%d %s %s %s\n",
-                        rs.getInt(1), rs.getString(2),
-                        rs.getString(3), rs.getString(4));
-            }
-
-            stmt.execute("drop table person");
-
-            conn.commit();
-
-        } catch (SQLException ex) {
-            System.out.println("in connection" + ex);
-        }
-
-        try {
-            DriverManager.getConnection
-                    ("jdbc:derby:;shutdown=true");
-        } catch (SQLException ex) {
-            if (((ex.getErrorCode() == 50000) &&
-                    ("XJ015".equals(ex.getSQLState())))) {
-                System.out.println("Derby shut down normally");
-            } else {
-                System.err.println("Derby did not shut down normally");
-                        System.err.println(ex.getMessage());
-            }
-        }
-    }
 
 
+    /**
+     * Create table client & database if it is not created. This method open and close the connection itself.
+     */
     public void prepareDatabase(){
         Connection conn = null;
         PreparedStatement pstmt;
@@ -171,6 +131,9 @@ public class Database {
 
     }
 
+    /**
+     * Clean client table. This method open and close the connection itself.
+     */
     public void cleanDatabase(){
         Connection conn = null;
         Statement stmt;
@@ -206,6 +169,9 @@ public class Database {
     }
 
 
+    /**
+     * Generate test client using the '123456' as client number and running machine generated keypair. This method open and close the connection itself.
+     */
     public void createTestClient(){
         Connection conn = null;
         PreparedStatement pstmt;
@@ -255,6 +221,10 @@ public class Database {
 
     }
 
+    /**
+     * Execute the input command in database. This method open and close the connection itself.
+     * @param command command to execute.
+     */
     public void simpleCommandInput(String command){
         Connection conn = null;
         Statement stmt;
@@ -289,6 +259,9 @@ public class Database {
     }
 
 
+    /**
+     * List the client registed in database. This method open and close the connection itself.
+     */
     public void viewClients(){
         Connection conn;
         Statement stmt;
@@ -331,6 +304,11 @@ public class Database {
     }
 
 
+    /**
+     * This method check if the client exists in the server database. This method open and close the connection itself.
+     * @param client_number Client number to check.
+     * @return if client exists or not.
+     */
     public Boolean clientExists(String client_number){
 
         if(client_number.isEmpty()){
@@ -379,12 +357,66 @@ public class Database {
         return res;
     }
 
+    /**
+     * Return associated public key of client
+     * @param client_number client number
+     * @return bytes of client public key
+     */
+    public byte[] client_public_key(String client_number){
+
+        if(client_number.isEmpty()){
+            client_number="0";
+        }
+
+        byte[] res = null;
+        Connection conn;
+        Statement stmt;
+        ResultSet rs;
+
+
+        try {
+            Driver derbyEmbeddedDriver = new EmbeddedDriver();
+            DriverManager.registerDriver(derbyEmbeddedDriver);
+            conn = DriverManager.getConnection
+                    ("jdbc:derby:pai5db");
+            conn.setAutoCommit(false);
+            stmt = conn.createStatement();
+
+            rs = stmt.executeQuery("select publicKey from client where clientNumber = '"+client_number+"'");
+
+            while (rs.next()) {
+                res = rs.getBytes(1);
+            }
+
+
+
+
+        } catch (SQLException e) {
+            System.out.println("in connection" + e);
+        }
+
+        try {
+            DriverManager.getConnection
+                    ("jdbc:derby:;shutdown=true");
+        } catch (SQLException ex) {
+            if (((ex.getErrorCode() == 50000) &&
+                    ("XJ015".equals(ex.getSQLState())))) {
+                System.out.println("Derby shut down normally");
+            } else {
+                System.err.println("Derby did not shut down normally");
+                System.err.println(ex.getMessage());
+            }
+        }
+
+        return res;
+    }
+
 
     private KeyPair generateKeyPar() {
 
         try {
-            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-            keyPairGenerator.initialize(2048);
+            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("DSA");
+            keyPairGenerator.initialize(1024);
             KeyPair keyPair = keyPairGenerator.generateKeyPair();
             return keyPair;
         } catch (NoSuchAlgorithmException e) {

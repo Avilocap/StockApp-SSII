@@ -6,10 +6,14 @@ import java.lang.ClassNotFoundException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.InvalidKeyException;
+import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
 
 /**
 
@@ -43,18 +47,33 @@ public class serverSide {
                 oos.writeObject(""+ message);
                 oos.flush();
 
-                PublicKey pukey = (PublicKey) ois.readObject();
+                byte[] bytes = get_client_pubkey(message);
                 System.out.println("Public Key received");
+                oos.flush();
+
+                PublicKey pubKey = null;
+                try {
+                    X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(bytes);
+                    KeyFactory keyFactory = KeyFactory.getInstance("DSA");
+                    pubKey = keyFactory.generatePublic(pubKeySpec);
+                } catch (NoSuchAlgorithmException e) {
+                    e.printStackTrace();
+                } catch (InvalidKeySpecException e) {
+                    e.printStackTrace();
+                }
+
 
 
                 String data_to_sign = (String) ois.readObject();
-                System.out.println("Data received");
+                System.out.println("Data received" + data_to_sign);
+
+
 
                 byte[] b = (byte[]) ois.readObject();
                 System.out.println("bytes received");
 
 
-                if(verificaFirmaDigital(pukey,data_to_sign,b)){
+                if(verificaFirmaDigital(pubKey,data_to_sign,b)){
                     oos.writeObject("ok");
                 }else{
                     oos.writeObject("nook");
@@ -117,12 +136,16 @@ public class serverSide {
 
 
     private static Boolean verifyClientNumber(String clientNumber){
-        Boolean res = false;
+        Database e = new Database();
+        return e.clientExists(clientNumber);
 
-        if (clientNumber.equals("123456")){
-            res = true;
-        }
-        return res;
+
+    }
+
+    private static byte[] get_client_pubkey(String clientNumber){
+        Database e = new Database();
+        return e.client_public_key(clientNumber);
+
 
     }
 }

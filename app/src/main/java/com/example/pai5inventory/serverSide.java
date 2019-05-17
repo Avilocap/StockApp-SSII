@@ -47,7 +47,10 @@ public class serverSide {
                 oos.writeObject(""+ message);
                 oos.flush();
 
-                byte[] bytes = get_client_pubkey(message);
+
+
+                byte[] bytes = (byte[]) ois.readObject();
+//                byte[] bytes = get_client_pubkey(message);
                 System.out.println("Public Key received");
                 oos.flush();
 

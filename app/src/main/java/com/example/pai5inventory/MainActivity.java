@@ -169,6 +169,10 @@ public class MainActivity extends AppCompatActivity {
                                         //Si el número de cliente está verificado, se envian los datos, si no, se informa
                                         if(!message.equals("false")){
 
+
+                                            oos.flush();
+                                            oos.writeObject(keybytes);
+
                                             try {
                                                 Thread.sleep(100);
                                             } catch (InterruptedException e) {

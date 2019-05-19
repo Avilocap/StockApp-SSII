@@ -14,13 +14,14 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Date;
 
 /**
 
  *
  * https://www.journaldev.com/741/java-socket-programming-server-client
  */
-public class serverSide {
+public class ServerSide {
 
     //static ServerSocket variable
     private static ServerSocket server;
@@ -28,6 +29,7 @@ public class serverSide {
     private static int port = 9876;
 
     public static void main(String[] args) throws IOException, ClassNotFoundException{
+        Database db = new Database();
         //create the socket server object
         server = new ServerSocket(port);
         //keep listens indefinitely until receives 'exit' call or program terminates
@@ -78,17 +80,26 @@ public class serverSide {
 
                 if(verificaFirmaDigital(pubKey,data_to_sign,b)){
                     oos.writeObject("ok");
+                    oos.flush();
+                    Date now = new Date(System.currentTimeMillis()-100);
+                    db.createOrderRegistry(now,true);
                 }else{
+
                     oos.writeObject("nook");
                     oos.flush();
+                    Date now = new Date(System.currentTimeMillis()-100);
+                    db.createOrderRegistry(now,false);
 
                 }
+
 
                 ois.close();
                 oos.close();
                 socket.close();
                 break;
             }else{
+                Date now = new Date(System.currentTimeMillis()-100);
+                db.createOrderRegistry(now,false);
                 System.out.println("You are not allowed to send data: " + message);
                 message = "false";
                 //write object to Socket

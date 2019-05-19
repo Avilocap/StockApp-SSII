@@ -11,6 +11,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.List;
+import java.util.Random;
 
 import org.apache.derby.jdbc.EmbeddedDriver;
 
@@ -24,11 +32,14 @@ public class Database {
 //        e.testDerby();
 //        e.prepareDatabase();
 //        e.createTestClient();
+//        e.createTestOrderRegistry();
 //        e.viewClients();
+//        e.viewOrders();
 //        e.clientExists();
 //        Ejecutar este comando solo para borrar la tabla cliente
 //        e.cleanDatabase();
 //        e.simpleCommandInput("drop database pai5db");
+
 
 
     }
@@ -95,11 +106,18 @@ public class Database {
         Connection conn = null;
         PreparedStatement pstmt;
         Statement stmt;
-        String createSQL = "create table client ("
+        Statement stm2;
+        String createCLientSQL = "create table client ("
                 + "id integer not null generated always as"
                 + " identity (start with 1, increment by 1),   "
                 + "clientNumber varchar(30) not null, publicKey blob(16M),"
                 + "constraint primary_key primary key (id))";
+
+        String createOrdersSQL = "create table orders ("
+                + "id integer not null generated always as"
+                + " identity (start with 1, increment by 1),   "
+                + " date Date not null, accepted boolean,"
+                + "constraint orders_primary_key primary key (id))";
 
         try {
             Driver derbyEmbeddedDriver = new EmbeddedDriver();
@@ -108,7 +126,12 @@ public class Database {
                     ("jdbc:derby:pai5db;create=true");
             conn.setAutoCommit(false);
             stmt = conn.createStatement();
-            stmt.execute(createSQL);
+            stmt.execute(createCLientSQL);
+            System.out.println("Table client created");
+
+            stm2 = conn.createStatement();
+            stm2.execute(createOrdersSQL);
+            System.out.println("Table orders created");
 
             conn.commit();
         } catch (SQLException e) {
@@ -137,7 +160,9 @@ public class Database {
     public void cleanDatabase(){
         Connection conn = null;
         Statement stmt;
+        Statement stmt2;
         String createSQL = "drop table client";
+        String createSQLorders = "drop table orders";
 
         try {
             Driver derbyEmbeddedDriver = new EmbeddedDriver();
@@ -147,6 +172,8 @@ public class Database {
             conn.setAutoCommit(false);
             stmt = conn.createStatement();
             stmt.execute(createSQL);
+            stmt2 = conn.createStatement();
+            stmt2.execute(createSQLorders);
             conn.commit();
         } catch (SQLException e) {
             System.out.println("in connection" + e);
@@ -159,7 +186,7 @@ public class Database {
             if (((ex.getErrorCode() == 50000) &&
                     ("XJ015".equals(ex.getSQLState())))) {
                 System.out.println("Derby shut down normally");
-                System.out.println("Table Client deleted");
+                System.out.println("All tables deleted");
             } else {
                 System.err.println("Derby did not shut down normally");
                 System.err.println(ex.getMessage());
@@ -221,6 +248,120 @@ public class Database {
 
     }
 
+
+    /**
+     * Generate test order generating random order from the last 4 months. This method open and close the connection itself.
+     */
+    public void createTestOrderRegistry(){
+        Connection conn = null;
+        PreparedStatement pstmt;
+        Random random = new Random();
+
+        KeyPair par_de_claves = generateKeyPar();
+
+
+        try {
+            Driver derbyEmbeddedDriver = new EmbeddedDriver();
+            DriverManager.registerDriver(derbyEmbeddedDriver);
+            conn = DriverManager.getConnection
+                    ("jdbc:derby:pai5db");
+            conn.setAutoCommit(false);
+
+
+            for(int i=0; i<=80;i++){
+                pstmt = conn.prepareStatement("insert into orders (Date,Accepted) values(?,?)");
+                pstmt.setDate(1, createRandomDate());
+                pstmt.setBoolean(2, random.nextBoolean());
+                pstmt.executeUpdate();
+                System.out.println(createRandomDate().toString());
+            }
+
+
+
+
+            conn.commit();
+
+        } catch (SQLException ex) {
+            System.out.println("in connection" + ex);
+        }
+
+
+        try {
+            DriverManager.getConnection
+                    ("jdbc:derby:;shutdown=true");
+        } catch (SQLException ex) {
+            if (((ex.getErrorCode() == 50000) &&
+                    ("XJ015".equals(ex.getSQLState())))) {
+                System.out.println("Derby shut down normally");
+                System.out.println("Test client imported sucessfully");
+            } else {
+                System.err.println("Derby did not shut down normally");
+                System.err.println(ex.getMessage());
+            }
+        }
+
+    }
+
+    /**
+     * Generate new order. This method open and close the connection itself.
+     */
+    public void createOrderRegistry(Date fecha, Boolean res){
+        Connection conn = null;
+        PreparedStatement pstmt;
+
+
+
+        try {
+            Driver derbyEmbeddedDriver = new EmbeddedDriver();
+            DriverManager.registerDriver(derbyEmbeddedDriver);
+            conn = DriverManager.getConnection
+                    ("jdbc:derby:pai5db");
+            conn.setAutoCommit(false);
+
+            java.sql.Date sqldate = new java.sql.Date(fecha.getTime());
+            pstmt = conn.prepareStatement("insert into orders (Date,Accepted) values(?,?)");
+            pstmt.setDate(1, sqldate);
+            pstmt.setBoolean(2, res);
+            pstmt.executeUpdate();
+            System.out.println(createRandomDate().toString());
+
+            conn.commit();
+
+        } catch (SQLException ex) {
+            System.out.println("in connection" + ex);
+        }
+
+
+        try {
+            DriverManager.getConnection
+                    ("jdbc:derby:;shutdown=true");
+        } catch (SQLException ex) {
+            if (((ex.getErrorCode() == 50000) &&
+                    ("XJ015".equals(ex.getSQLState())))) {
+                System.out.println("Derby shut down normally");
+                System.out.println("Test client imported sucessfully");
+            } else {
+                System.err.println("Derby did not shut down normally");
+                System.err.println(ex.getMessage());
+            }
+        }
+
+    }
+
+    public static java.sql.Date createRandomDate() {
+        int day = createRandomIntBetween(1, 28);
+        int month = createRandomIntBetween(1, 4);
+        int year = createRandomIntBetween(2019, 2019);
+        LocalDate res = LocalDate.of(year, month, day);
+        Date date = Date.from(res.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        java.sql.Date sqldate = new java.sql.Date(date.getTime());
+        return sqldate;
+    }
+
+    public static int createRandomIntBetween(int start, int end) {
+        return start + (int) Math.round(Math.random() * (end - start));
+    }
+
     /**
      * Execute the input command in database. This method open and close the connection itself.
      * @param command command to execute.
@@ -260,7 +401,7 @@ public class Database {
 
 
     /**
-     * List the client registed in database. This method open and close the connection itself.
+     * List the client registered in database. This method open and close the connection itself.
      */
     public void viewClients(){
         Connection conn;
@@ -301,6 +442,135 @@ public class Database {
             }
         }
 
+    }
+
+    /**
+     * List the orders registered in database. This method open and close the connection itself.
+     */
+    public void viewOrders(){
+        Connection conn;
+        Statement stmt;
+        ResultSet rs;
+
+
+        try {
+            Driver derbyEmbeddedDriver = new EmbeddedDriver();
+            DriverManager.registerDriver(derbyEmbeddedDriver);
+            conn = DriverManager.getConnection
+                    ("jdbc:derby:pai5db");
+            conn.setAutoCommit(false);
+            stmt = conn.createStatement();
+
+            rs = stmt.executeQuery("select * from orders");
+            while (rs.next()) {
+                System.out.print(rs.getDate(2).toString()+" "+rs.getBoolean(3)+"\n");
+            }
+
+
+
+        } catch (SQLException e) {
+            System.out.println("in connection" + e);
+        }
+
+        try {
+            DriverManager.getConnection
+                    ("jdbc:derby:;shutdown=true");
+        } catch (SQLException ex) {
+            if (((ex.getErrorCode() == 50000) &&
+                    ("XJ015".equals(ex.getSQLState())))) {
+                System.out.println("Derby shut down normally");
+            } else {
+                System.err.println("Derby did not shut down normally");
+                System.err.println(ex.getMessage());
+            }
+        }
+
+    }
+
+    /**
+     * Get the orders registered in database. This method open and close the connection itself.
+     */
+    public ResultSet getAllOrders(){
+        Connection conn;
+        Statement stmt;
+        ResultSet rs = null;
+
+        try {
+            Driver derbyEmbeddedDriver = new EmbeddedDriver();
+            DriverManager.registerDriver(derbyEmbeddedDriver);
+            conn = DriverManager.getConnection
+                    ("jdbc:derby:pai5db");
+            conn.setAutoCommit(false);
+            stmt = conn.createStatement();
+
+            rs = stmt.executeQuery("select * from orders");
+
+        } catch (SQLException e) {
+            System.out.println("in connection" + e);
+        }
+
+        try {
+            DriverManager.getConnection
+                    ("jdbc:derby:;shutdown=true");
+        } catch (SQLException ex) {
+            if (((ex.getErrorCode() == 50000) &&
+                    ("XJ015".equals(ex.getSQLState())))) {
+                System.out.println("Derby shut down normally");
+            } else {
+                System.err.println("Derby did not shut down normally");
+                System.err.println(ex.getMessage());
+            }
+        }
+
+        return rs;
+    }
+
+    public List<String> getAllOrdersInRange(Date startDate, Date endDate){
+        Connection conn;
+        PreparedStatement pstmt;
+        ResultSet rs = null;
+        List<String> resultado = new ArrayList<>();
+
+        try {
+            Driver derbyEmbeddedDriver = new EmbeddedDriver();
+            DriverManager.registerDriver(derbyEmbeddedDriver);
+            conn = DriverManager.getConnection
+                    ("jdbc:derby:pai5db");
+            conn.setAutoCommit(false);
+//            stmt = conn.createStatement();
+
+//            rs = stmt.executeQuery("select * from orders where date BETWEEN ? AND ? ");
+            String sqlquery = "select * from orders where date BETWEEN ? AND ?";
+            pstmt = conn.prepareStatement(sqlquery);
+            pstmt.setDate(1, new java.sql.Date(startDate.getTime()));
+            pstmt.setDate(2, new java.sql.Date(endDate.getTime()));
+
+            rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+//                System.out.print(rs.getDate(2).toString()+" "+rs.getBoolean(3)+"\n");
+                resultado.add(""+rs.getBoolean(3));
+            }
+
+
+        } catch (SQLException e) {
+            System.out.println("in connection" + e);
+        }
+
+        try {
+            DriverManager.getConnection
+                    ("jdbc:derby:;shutdown=true");
+        } catch (SQLException ex) {
+            if (((ex.getErrorCode() == 50000) &&
+                    ("XJ015".equals(ex.getSQLState())))) {
+                System.out.println("Derby shut down normally");
+            } else {
+                System.err.println("Derby did not shut down normally");
+                System.err.println(ex.getMessage());
+            }
+        }
+
+        return resultado;
     }
 
 

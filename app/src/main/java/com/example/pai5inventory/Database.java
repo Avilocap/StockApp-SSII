@@ -28,7 +28,9 @@ public class Database {
 
     public static void main(String[] args){
 
-        Database e = new Database();
+        allCommands();
+
+//        Database e = new Database();
 //        e.testDerby();
 //        e.prepareDatabase();
 //        e.createTestClient();
@@ -41,6 +43,16 @@ public class Database {
 //        e.simpleCommandInput("drop database pai5db");
 
 
+
+    }
+
+
+    private static void allCommands(){
+        Database e = new Database();
+        e.cleanDatabase();
+        e.prepareDatabase();
+        e.createTestClient();
+        e.createTestOrderRegistry();
 
     }
 
